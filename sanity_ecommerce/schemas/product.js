@@ -5,7 +5,6 @@ export default {
     fields: [
         {
             name: 'image',
-            type: 'Image',
             type: 'array',
             of: [
                 {

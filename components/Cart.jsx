@@ -10,6 +10,7 @@ import {
 import { TiDeleteOutline } from "react-icons/ti";
 import toast from "react-hot-toast";
 import { urlFor } from "../lib/client";
+import loadStripeInstance from "../lib/getStripe";
 
 const Cart = () => {
   const cartRef = useRef();
@@ -20,8 +21,24 @@ const Cart = () => {
     setTotalQuantity,
     setShowCart,
     cartItems,
-    totalPrice,toggleCartItemQuantity
+    totalPrice,toggleCartItemQuantity,
+    onRemove
   } = useStateContext();
+
+  //functions
+  const handleCheckout= async ()=>{
+    const strip = await loadStripeInstance();
+    const { error } = await strip.redirectToCheckout({
+      items: cart.map((item) => ({
+        sku: item.sku,
+        quantity: item.quantity,
+      })),  // Replace with the ID of your product
+      successUrl: `${urlFor("/")}/success`,
+      cancelUrl: `${urlFor("/")}/cancel`,
+    });
+
+  }
+
 
   return (
     <div className="cart-wrapper" ref={cartRef}>
@@ -75,7 +92,7 @@ const Cart = () => {
                         </p>
 
                       </div>
-                      <button type='button' className="remove-item" onClick="">
+                      <button type='button' className="remove-item" onClick={()=> onRemove(item)}>
                         <TiDeleteOutline />
                       </button>
                     </div>
@@ -90,7 +107,7 @@ const Cart = () => {
               <h3>${totalPrice}</h3>
             </div>
             <div className="btn-container">
-              <button type='button' className="btn" onClick="">
+              <button type='button' className="btn" onClick={handleCheckout}>
                 Pay with Stripe
               </button>
             </div>

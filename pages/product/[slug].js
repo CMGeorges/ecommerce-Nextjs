@@ -71,7 +71,7 @@ const ProductDetails = ({ product, products }) => {
                 <div className="marquee">
                     <div className="maylike-products-container">
                         {products?.map((item) => (
-                            <Product key={item._id} product={item} />
+                            <Product key={item?._id} product={item} />
                         ))}
                     </div>
                 </div>

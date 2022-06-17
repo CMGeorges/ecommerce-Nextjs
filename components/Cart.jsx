@@ -10,7 +10,7 @@ import {
 import { TiDeleteOutline } from "react-icons/ti";
 import toast from "react-hot-toast";
 import { urlFor } from "../lib/client";
-import loadStripeInstance from "../lib/getStripe";
+import loadStripeInstance from "../lib/stripe";
 
 const Cart = () => {
   const cartRef = useRef();
@@ -27,18 +27,23 @@ const Cart = () => {
 
   //functions
   const handleCheckout= async ()=>{
-    const strip = await loadStripeInstance();
-    const { error } = await strip.redirectToCheckout({
-      items: cart.map((item) => ({
-        sku: item.sku,
-        quantity: item.quantity,
-      })),  // Replace with the ID of your product
-      successUrl: `${urlFor("/")}/success`,
-      cancelUrl: `${urlFor("/")}/cancel`,
+    const stripe = await loadStripeInstance();
+
+    const response = await fetch("/api/stripe", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(cartItems),
     });
+    if(response.statusCode === 500) return;
+   
+      const data = await response.json();
+      
+      toast.loading('Redirecting...');
 
+      stripe.redirectToCheckout({ sessionId:data.id });
   }
-
 
   return (
     <div className="cart-wrapper" ref={cartRef}>

@@ -70,7 +70,7 @@ const ProductDetails = ({ product, products }) => {
                 <h2>You may also like</h2>
                 <div className="marquee">
                     <div className="maylike-products-container">
-                        {products?.map((item) => (
+                        {products && products?.map((item) => (
                             <Product key={item?._id} product={item} />
                         ))}
                     </div>

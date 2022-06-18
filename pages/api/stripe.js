@@ -1,5 +1,5 @@
 
-const stripe = require('stripe')(`${process.env.STRIPE_SECRET_KEY}`);
+const stripe = require('stripe')(`${process.env.NEXT_PUBLIC_STRIPE_SECRET_KEY}`);
 
 export default async function handler(req, res) {
     if (req.method === 'POST') {
@@ -11,11 +11,11 @@ export default async function handler(req, res) {
                 billing_address_collection:'auto',
                 shipping_options:[
                     {shipping_rate: 'shr_1LB9fCGeYOboLYZ0bglcMZpN'},
-                    {shipping_rate: 'shr_1LB9gOGeYOboLYZ0ffRW2J7L'}
+                    {shipping_rate: 'shr_1LC52IGeYOboLYZ0Varnj5cc'}
                 ],
                 line_items: req.body.map((item) => {
                     const img = item.image[0].asset._ref;
-                    const newImg = img.replace('image-', `https://cdn.sanity.io/images/${process.env.SANITY_PROJECT_ID}/production/`).replace('-webp', '.webp');
+                    const newImg = img.replace('image-', `https://cdn.sanity.io/images/${process.env.NEXT_PUBLIC_SANITY_PROJECT_ID}/production/`).replace('-webp', '.webp');
                     
                     return {
                         price_data:{

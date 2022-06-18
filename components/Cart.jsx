@@ -42,7 +42,9 @@ const Cart = () => {
       
       toast.loading('Redirecting...');
 
-      stripe.redirectToCheckout({ sessionId:data.id });
+      const {error} = await  stripe?.redirectToCheckout({ sessionId:data.id });
+
+      console.warn(error.message);
   }
 
   return (

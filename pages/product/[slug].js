@@ -9,8 +9,13 @@ import { useStateContext } from '../../context/StateContext';
 const ProductDetails = ({ product, products }) => {
     const { image, details, price, name } = product;
     const [index, setIndex] = useState(0);
-    const {incQty,decQty,qty,onAdd} = useStateContext();
-
+    const {incQty,decQty,qty,onAdd,setShowCart} = useStateContext();
+    //function
+    const handleBuyNow = () => {
+        onAdd(product, qty);
+            setShowCart(true);
+        }
+        
     return (
         <div>
             <div className="product-detail-container">
@@ -59,7 +64,7 @@ const ProductDetails = ({ product, products }) => {
                         <button type="button" className="add-to-cart" onClick={ () => onAdd(product,qty)}>
                             Add to Cart
                         </button>
-                        <button type="button" className="buy-now" onClick={() => {}}>
+                        <button type="button" className="buy-now" onClick={handleBuyNow}>
                             Buy Now
                         </button>
                     </div>
@@ -84,8 +89,11 @@ export const getStaticProps = async ({ params: { slug } }) => {
     const query = `*[_type == "product" && slug.current == "${slug}"][0]`;
 
     const productQuery = `*[_type == "product"]`;
+
+
     const product = await client.fetch(query);
     const products = await client.fetch(productQuery);
+    console.log(product);
 
     return {
         props: {

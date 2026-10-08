@@ -1,8 +1,8 @@
 import React from 'react'
-import { client } from '../lib/client'
+import { loadCatalog } from '../server/catalog'
 import { HeroBanner, Footer, Product, FooterBanner } from '../components'
 
-const Home = ({ products, bannerData }) => {
+const Home = ({ products, bannerData, demo }) => {
 
 
 
@@ -11,7 +11,8 @@ const Home = ({ products, bannerData }) => {
 
   return (
     <>
-      <HeroBanner heroBanner={bannerData?.length && bannerData[0]} />
+      {demo && <p role="status">Catalogue de démonstration — paiements désactivés. Configurez Sanity et Stripe pour vendre.</p>}
+      {bannerData?.length > 0 && <HeroBanner heroBanner={bannerData[0]} />}
       <div className="products-heading">
         <h2>Best Selling</h2>
         <p>Speakers of many variations</p>
@@ -23,23 +24,13 @@ const Home = ({ products, bannerData }) => {
       </div>
 
       {/* Footer */}
-      <FooterBanner  footerBanner={bannerData && bannerData[0]} />
+      {bannerData?.length > 0 && <FooterBanner footerBanner={bannerData[0]} />}
     </>
   )
 }
 
 export const getServerSideProps = async () => {
-  const query = '*[_type == "product"]';
-  const products = await client.fetch(query);
-
-  const queryBanner = '*[_type == "banner"]';
-  const bannerData = await client.fetch(queryBanner);
-
-  return {
-    props: {
-      products,
-      bannerData
-    }
-  }
-}
-export default Home
+  const { products, bannerData, demo } = await loadCatalog();
+  return { props: {products, bannerData, demo} };
+};
+export default Home;

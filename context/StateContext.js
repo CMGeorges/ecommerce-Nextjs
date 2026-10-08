@@ -1,113 +1,43 @@
-import React,{useState,useEffect,useContext, createContext} from 'react';
+import {useState, useEffect, useContext, createContext} from 'react';
 import {toast} from 'react-hot-toast';
-
+import {changeQuantity, totals} from '../server/cart';
 const Context = createContext();
-
-
+const STORAGE_KEY = 'tech-store-cart-v1';
 export const StateContext = ({children}) => {
-    const [showCart, setShowCart] = useState(false);
-    const [cartItems, setCartItems] = useState([]);
-    const [totalPrice, setTotalPrice] = useState(0);
-    const [totalQuantity, setTotalQuantity] = useState(0);
-    const [qty, setQty] = useState(1);
-
-    let foundProduct;
-    let foundIndex;
-//functions
-    const onAdd = (product,quantity) => {
-        const checkProductInCart = cartItems.find(item => item._id === product._id);
-        
-        setTotalPrice((prevTotalPrice)=>prevTotalPrice + product.price * quantity);
-        setTotalQuantity((prevTotalQuantities)=>prevTotalQuantities + quantity);
-    
-        if(checkProductInCart){
-            const updatedCartItems = cartItems?.map((cartProduct) => {
-                if(cartProduct._id === product._id){
-                    return {...cartProduct, quantity: cartProduct.quantity + quantity}
-                }
-                return cartProduct;
-            })
-
-            setCartItems(updatedCartItems);
-        }else{
-            product.quantity = quantity;
-            setCartItems([...cartItems, {...product}]);
-        }
-        toast.success(`${qty} ${product.name} added to cart.`);
-            setQty(1);
+  const [showCart, setShowCart] = useState(false);
+  const [cartItems, setCartItems] = useState([]);
+  const [loaded, setLoaded] = useState(false);
+  const [qty, setQty] = useState(1);
+  const {totalPrice, totalQuantity} = totals(cartItems);
+  useEffect(() => {
+    try {
+      const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+      if (Array.isArray(saved)) setCartItems(saved.filter(item => item && typeof item._id === 'string'
+        && Number.isInteger(item.quantity) && item.quantity > 0 && item.quantity <= 99
+        && Number.isFinite(item.price) && item.price > 0 && Array.isArray(item.image)));
+    } catch { /* Invalid or unavailable storage: use an empty cart. */ }
+    setLoaded(true);
+  }, []);
+  useEffect(() => {
+    if (loaded) {
+      try { localStorage.setItem(STORAGE_KEY, JSON.stringify(cartItems)); } catch { /* Storage optional. */ }
     }
-    const toggleCartItemQuantity =(id,value)=>{
-       
-            foundProduct = cartItems.find((item) => item._id === id);
-            foundIndex = cartItems.findIndex((item) => item._id === id);
-
-            
-
-            if(value === 'inc'){
-                foundProduct.quantity += 1;
-                const updatedCartItems = cartItems.find((item) => {
-                    if(item._id === id){
-                        return {...item, quantity: foundProduct.quantity}
-                    }
-                });
-                setCartItems([...cartItems.slice(0,foundIndex),updatedCartItems,...cartItems.slice(foundIndex+1)]);
-                // setCartItems([...updatedCartItems, ...cartItems.slice(0,foundIndex), ...cartItems.slice(foundIndex+1)]);
-                setTotalPrice((prevTotalPrice)=>prevTotalPrice + foundProduct.price);
-                setTotalQuantity((prevTotalQuantities)=>prevTotalQuantities + 1);
-            }else if(value === 'dec'){
-                foundProduct.quantity -= 1;
-                const updatedCartItems = cartItems.find((item) => {
-                    if(item._id === id){
-                        return {...item, quantity: foundProduct.quantity}
-                    }})
-                if(foundProduct.quantity > 1)
-                    setCartItems([...cartItems.slice(0,foundIndex),updatedCartItems,...cartItems.slice(foundIndex+1)]);
-                setTotalPrice((prevTotalPrice)=>prevTotalPrice - foundProduct.price);
-                setTotalQuantity((prevTotalQuantities)=>prevTotalQuantities - 1);
-            }
-    }
-    const onRemove = (product) => {
-        const foundProduct = cartItems.find((item) => item._id === product._id);
-        const newCartItems = cartItems.filter((item) => item._id !== foundProduct._id);
-        setCartItems([...newCartItems]);
-        setTotalPrice((prevTotalPrice)=>prevTotalPrice - foundProduct.price * foundProduct.quantity);
-        setTotalQuantity((prevTotalQuantities)=>prevTotalQuantities - foundProduct.quantity);
-        toast.error(`${foundProduct.name} removed from cart.`);
-
-    }
-    
-    const incQty=()=>{
-        setQty((prev)=>prev+1);
-    }
-    const decQty=()=>{
-        setQty((prev)=>{
-            if(prev - 1 < 1) return 1;
-            return prev-1;
-        });
-    }
-    
-
-    return(
-        <Context.Provider value={{
-            showCart,
-            setShowCart,
-            cartItems,
-            setCartItems,
-            totalPrice,
-            setTotalPrice,
-            totalQuantity,
-            setTotalQuantity,
-            qty,
-            setQty,
-            incQty,
-            decQty,
-            onAdd,
-            toggleCartItemQuantity,
-            onRemove
-        }}>
-            {children}
-        </Context.Provider>
-    )
-}
-
+  }, [loaded, cartItems]);
+  function onAdd(product, quantity) {
+    setCartItems(items => items.some(item => item._id === product._id)
+      ? changeQuantity(items, product._id, quantity)
+      : [...items, {...product, quantity: Math.min(99, quantity)}]);
+    toast.success(`${quantity} ${product.name} added to cart.`);
+    setQty(1);
+  }
+  function onRemove(product) {
+    setCartItems(items => items.filter(item => item._id !== product._id));
+    toast.success(`${product.name} removed from cart.`);
+  }
+  return <Context.Provider value={{showCart, setShowCart, cartItems, setCartItems,
+    totalPrice, totalQuantity, loaded, qty, setQty, onAdd, onRemove,
+    toggleCartItemQuantity: (id, value) => setCartItems(items => changeQuantity(items, id, value === 'inc' ? 1 : -1)),
+    incQty: () => setQty(value => Math.min(99, value + 1)),
+    decQty: () => setQty(value => Math.max(1, value - 1))}}>{children}</Context.Provider>;
+};
 export const useStateContext = () => useContext(Context);

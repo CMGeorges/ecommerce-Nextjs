@@ -1,4 +1,4 @@
-import React, { useRef } from "react";
+import React, { useRef, useState } from "react";
 import { useStateContext } from "../context/StateContext";
 import Link from "next/link";
 import {
@@ -10,7 +10,6 @@ import {
 import { TiDeleteOutline } from "react-icons/ti";
 import toast from "react-hot-toast";
 import { urlFor } from "../lib/client";
-import loadStripeInstance from "../lib/stripe";
 
 const Cart = () => {
   const cartRef = useRef();
@@ -25,27 +24,30 @@ const Cart = () => {
     onRemove
   } = useStateContext();
 
-  //functions
-  const handleCheckout= async ()=>{
-    const stripe = await loadStripeInstance();
-
-    const response = await fetch("/api/stripe", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(cartItems),
-    });
-    if(response.statusCode === 500) return;
-   
+  const [checkingOut, setCheckingOut] = useState(false);
+  const checkoutKey = useRef(null);
+  const handleCheckout = async () => {
+    if (checkingOut) return;
+    setCheckingOut(true);
+    const items = cartItems.map(({_id, quantity}) => ({_id, quantity}));
+    const fingerprint = JSON.stringify(items);
+    if (checkoutKey.current?.fingerprint !== fingerprint) {
+      checkoutKey.current = {fingerprint, key: crypto.randomUUID()};
+    }
+    try {
+      const response = await fetch('/api/stripe', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json', 'Idempotency-Key': checkoutKey.current.key},
+        body: JSON.stringify(items),
+      });
       const data = await response.json();
-      
-      toast.loading('Redirecting...');
-
-      const {error} = await  stripe?.redirectToCheckout({ sessionId:data.id });
-
-      console.warn(error.message);
-  }
+      if (!response.ok) throw new Error(data.error || 'Checkout unavailable');
+      window.location.assign(data.url);
+    } catch (error) {
+      toast.error(error.message);
+      setCheckingOut(false);
+    }
+  };
 
   return (
     <div className="cart-wrapper" ref={cartRef}>
@@ -114,7 +116,7 @@ const Cart = () => {
               <h3>${totalPrice}</h3>
             </div>
             <div className="btn-container">
-              <button type='button' className="btn" onClick={handleCheckout}>
+              <button type='button' className="btn" disabled={checkingOut} onClick={handleCheckout}>
                 Pay with Stripe
               </button>
             </div>

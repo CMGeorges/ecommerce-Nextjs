@@ -1,34 +1,45 @@
-This is a [Next.js](https://nextjs.org/) project bootstrapped with [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app).
+# Tech Store — Next.js + Sanity + Stripe
 
-## Getting Started
+Boutique exécutable avec catalogue, fiches produit et panier persistant. Sans configuration externe, un catalogue de démonstration est disponible et les paiements sont désactivés explicitement.
 
-First, run the development server:
+## Démarrage local
+
+Node.js 22 :
 
 ```bash
+npm ci
+cp .env.example .env.local
 npm run dev
-# or
-yarn dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Ouvrir http://localhost:3000. Vérification : http://localhost:3000/api/health.
 
-You can start editing the page by modifying `pages/index.js`. The page auto-updates as you edit the file.
+```bash
+npm test
+npm run build
+npm start
+```
 
-[API routes](https://nextjs.org/docs/api-routes/introduction) can be accessed on [http://localhost:3000/api/hello](http://localhost:3000/api/hello). This endpoint can be edited in `pages/api/hello.js`.
+## Catalogue et paiement Stripe
 
-The `pages/api` directory is mapped to `/api/*`. Files in this directory are treated as [API routes](https://nextjs.org/docs/api-routes/introduction) instead of React pages.
+Configurer `.env.local` à partir de `.env.example` :
 
-## Learn More
+- `NEXT_PUBLIC_SANITY_PROJECT_ID` et `NEXT_PUBLIC_SANITY_DATASET` identifient le catalogue.
+- `SANITY_READ_TOKEN` reste côté serveur et est nécessaire si le dataset est privé.
+- `STRIPE_SECRET_KEY` reste côté serveur. Utiliser une clé de test pour la validation initiale.
+- `APP_BASE_URL` est l'origine réelle de la boutique, par exemple `http://localhost:3000` en local.
 
-To learn more about Next.js, take a look at the following resources:
+Les documents Sanity `product` doivent avoir `_id`, `name`, `price` (CAD, deux décimales maximum), `slug.current`, `image` et `details`. Les bannières sont optionnelles. Les prix Stripe sont reconstruits depuis Sanity, jamais depuis le panier envoyé. Les quantités sont bornées, les doublons regroupés et les tentatives répétées utilisent une clé d'idempotence.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+La page de retour vérifie l'état payé auprès de Stripe avant de vider le panier. Elle ne déclenche pas l'expédition. Avant de vendre réellement, ajouter un registre de commandes durable, des webhooks de paiement signés, la gestion des stocks, des remboursements et les règles de livraison/taxes. Les anciens tarifs de livraison Stripe codés en dur ont été retirés.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js/) - your feedback and contributions are welcome!
+## Docker
 
-## Deploy on Vercel
+```bash
+docker build -t tech-store .
+docker run --rm -p 127.0.0.1:3000:3000 tech-store
+```
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+Ce lancement utilise le catalogue de démonstration. Les variables `NEXT_PUBLIC_*` utilisées pour les images sont intégrées au build ; pour un catalogue réel, les fournir au build dans votre plateforme, puis fournir les clés privées uniquement au runtime.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/deployment) for more details.
+Ne jamais utiliser de variables `NEXT_PUBLIC_*` pour des clés privées. Si les anciennes clés ont été exposées, les révoquer dans les tableaux de bord Stripe/Sanity : enlever un fichier de la branche ne supprime pas son historique Git.

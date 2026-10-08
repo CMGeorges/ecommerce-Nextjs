@@ -1,41 +1,31 @@
-import React,{useState,useEffect} from 'react'
-import Link from 'next/link'
-import {BsBagCheckFill} from 'react-icons/bs'
-import { useRouter } from 'next/router'
-import { useStateContext } from '../context/StateContext'
-import { runFireworks } from '../lib/utils'
+import {useEffect, useRef} from 'react';
+import Link from 'next/link';
+import {useStateContext} from '../context/StateContext';
 
-
-const Success = () => {
-    const {setCartItems,setTotalPrice,setTotalQuantity} = useStateContext()
-    const [order,setOrder] = useState(null);
-
-useEffect(()=>{
-    localStorage.clear();
-    setCartItems([]);
-    setTotalPrice(0);
-    setTotalQuantity(0);
-    runFireworks();
-},[])
-  return (
-    <div className='success-wrapper'>
-        <div className="success">
-            <p className="icon">
-                <BsBagCheckFill />
-            </p>
-            <h2>Thank you for your order!</h2>
-            <p className="email-msg">Check your email inbox for the receipt.</p>
-            <p className="description">If you have any question, please email <a href="mailto:cmgeorges.cie@gmail.com" className="email">
-            CMGeorges&Cie
-                </a></p>
-                <Link href="/">
-                    <button type='button' width="300px"  className='btn'>
-                        Continue Shopping
-                    </button>
-                </Link>
-        </div>
-    </div>
-  )
+export default function Success({paid}) {
+  const {setCartItems, loaded} = useStateContext();
+  const cleared = useRef(false);
+  useEffect(() => {
+    if (paid && loaded && !cleared.current) {
+      cleared.current = true;
+      setCartItems([]);
+    }
+  }, [paid, setCartItems, loaded]);
+  return <div className="success-wrapper"><div className="success">
+    <h2>{paid ? 'Paiement confirmé par Stripe.' : 'Paiement non confirmé.'}</h2>
+    <p>{paid ? 'Votre paiement a été accepté.' : 'Votre panier est conservé. Réessayez ou contactez la boutique.'}</p>
+    <Link href="/">Retour à la boutique</Link>
+  </div></div>;
 }
-
-export default Success
+export async function getServerSideProps({query, res}) {
+  res.setHeader('Cache-Control', 'private, no-store');
+  const id = query.session_id;
+  if (typeof id !== 'string' || !/^cs_(test_|live_)?[A-Za-z0-9]+$/.test(id) || !process.env.STRIPE_SECRET_KEY) {
+    return {props: {paid: false}};
+  }
+  try {
+    const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
+    const session = await stripe.checkout.sessions.retrieve(id);
+    return {props: {paid: session.payment_status === 'paid' && session.mode === 'payment'}};
+  } catch { return {props: {paid: false}}; }
+}
